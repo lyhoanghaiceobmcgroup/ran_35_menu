@@ -1,4 +1,5 @@
 import { OrderService } from './orderService';
+import { TelegramNotificationService } from './telegramNotificationService';
 
 // Sepay API Configuration
 // Cần cấu hình trong file .env:
@@ -34,8 +35,7 @@ export class SepayService {
     bankCode: import.meta.env.VITE_SEPAY_BANK_CODE || 'MB',
     bankName: 'MB Bank',
     accountNumber: import.meta.env.VITE_SEPAY_ACCOUNT_NUMBER || '9090190899999',
-    accountName: import.meta.env.VITE_SEPAY_ACCOUNT_NAME || 'Vũ Thùy Giang',
-    branch: 'Chi nhánh TP.HCM'
+    accountName: import.meta.env.VITE_SEPAY_ACCOUNT_NAME || 'Vũ Thùy Giang'
   };
 
   /**
@@ -141,8 +141,17 @@ export class SepayService {
       if (updateResult.success) {
         console.log(`✅ Order ${orderId} marked as paid via Sepay webhook`);
         
-        // Gửi thông báo đến Telegram (optional)
-        // await this.notifyPaymentConfirmed(orderId, webhookData);
+        // Gửi thông báo biến động số dư từ ngân hàng
+        await TelegramNotificationService.sendBalanceNotification({
+          transactionId: webhookData.id.toString(),
+          accountNumber: webhookData.accountNumber,
+          amount: webhookData.transferAmount,
+          content: webhookData.content,
+          transactionDate: webhookData.transactionDate,
+          bankName: webhookData.gateway,
+          transferType: webhookData.transferType,
+          orderId: orderId
+        });
         
         return {
           success: true,

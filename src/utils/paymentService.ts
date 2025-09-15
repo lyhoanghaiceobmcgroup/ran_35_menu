@@ -1,5 +1,6 @@
 import { OrderService } from './orderService';
 import { SepayService } from './sepayService';
+import { TelegramNotificationService } from './telegramNotificationService';
 
 interface PaymentData {
   orderId: string;
@@ -38,15 +39,11 @@ export class PaymentService {
         throw new Error('Failed to update order payment information');
       }
       
-      // 2. Đăng ký webhook với Sepay nếu là thanh toán chuyển khoản
+      // 2. Log thông tin thanh toán chuyển khoản (webhook đã được cấu hình tự động)
       if (paymentData.paymentMethod === 'BANK_TRANSFER') {
-        try {
-          await SepayService.registerWebhook(paymentData.orderId, paymentData.amount);
-          console.log('🔗 Webhook registered with Sepay for order:', paymentData.orderId);
-        } catch (webhookError) {
-          console.error('❌ Failed to register webhook with Sepay:', webhookError);
-          // Vẫn tiếp tục xử lý đơn hàng ngay cả khi webhook thất bại
-        }
+        console.log('🔗 Bank transfer payment initiated for order:', paymentData.orderId);
+        console.log('💰 Amount:', paymentData.amount);
+        console.log('📱 Webhook URL configured:', import.meta.env.VITE_SEPAY_WEBHOOK_URL);
       }
       
       // 3. Gửi thông báo đến Telegram bot
@@ -176,27 +173,15 @@ export class PaymentService {
   
   // Thông báo đến webhook server (optional)
   private static async notifyWebhookServer(paymentData: PaymentData): Promise<void> {
-    try {
-      const response = await fetch(`${WEBHOOK_SERVER_URL}/api/payment-notification`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ...paymentData,
-          timestamp: new Date().toISOString(),
-          source: 'web-app'
-        })
-      });
-      
-      if (response.ok) {
-        console.log('🔗 Webhook server notified successfully');
-      } else {
-        console.warn('⚠️ Webhook server notification failed');
-      }
-    } catch (error) {
-      console.log('ℹ️ Webhook server not available (this is optional)');
-    }
+    // Log payment information instead of calling external webhook server
+    console.log('📋 Payment processed:', {
+      orderId: paymentData.orderId,
+      method: paymentData.paymentMethod,
+      amount: paymentData.amount,
+      table: paymentData.tableCode,
+      timestamp: new Date().toISOString()
+    });
+    console.log('✅ Payment data logged successfully');
   }
   
   // Kiểm tra trạng thái thanh toán
@@ -277,6 +262,18 @@ export class PaymentService {
         
         // Gửi thông báo Telegram về thanh toán thành công
         await this.sendTelegramPaymentConfirmation(paymentData);
+        
+        // Gửi thông báo biến động số dư từ ngân hàng
+        await TelegramNotificationService.sendBalanceNotification({
+          transactionId: webhookData.id || 'UNKNOWN',
+          accountNumber: webhookData.accountNumber || webhookData.bankAccount || 'UNKNOWN',
+          amount: webhookData.transferAmount || webhookData.amountIn || 0,
+          content: webhookData.content || 'Thanh toán đơn hàng',
+          transactionDate: webhookData.transactionDate || new Date().toISOString(),
+          bankName: webhookData.bankName || 'Ngân hàng',
+          transferType: 'in',
+          orderId: order.id
+        });
       }
 
       console.log('✅ Payment confirmed for order:', orderId);

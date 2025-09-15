@@ -6,6 +6,7 @@ import { Separator } from '@/components/ui/separator';
 import { Copy, CheckCircle, ArrowLeft, Clock, QrCode } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { SepayService } from '@/utils/sepayService';
+import { useOrderStatus } from '@/hooks/useOrderStatus';
 
 interface QRPaymentProps {
   orderTotal: number;
@@ -22,17 +23,55 @@ export const QRPayment: React.FC<QRPaymentProps> = ({
 }) => {
   const { toast } = useToast();
   const [timeLeft, setTimeLeft] = useState(15 * 60); // 15 phút
+  const [showSuccess, setShowSuccess] = useState(false);
   const [qrData, setQrData] = useState<{
     qrUrl: string;
     paymentCode: string;
     bankInfo: any;
   } | null>(null);
+  
+  // Sử dụng hook để theo dõi trạng thái thanh toán realtime
+  const { orderStatus, isLoading: statusLoading, refreshStatus } = useOrderStatus(orderId);
 
   // Tạo QR code và thông tin thanh toán sử dụng SepayService
   useEffect(() => {
     const qrInfo = SepayService.createOrderQRCode(orderId, orderTotal);
     setQrData(qrInfo);
   }, [orderId, orderTotal]);
+  
+  // Xử lý khi trạng thái thanh toán thay đổi
+  useEffect(() => {
+    if (orderStatus === 'confirmed') {
+      // Phát âm thanh thông báo thành công
+      try {
+        const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2m98OScTgwOUarm7blmGgU7k9n1unEiBC13yO/eizEIHWq+8+OWT');
+        audio.volume = 0.3;
+        audio.play().catch(() => {});
+      } catch (error) {
+        // Ignore audio errors
+      }
+      
+      // Hiển thị hiệu ứng thành công
+      setShowSuccess(true);
+      
+      toast({
+        title: "🎉 Thanh toán thành công!",
+        description: "Đơn hàng của bạn đã được xác nhận. Cảm ơn bạn!",
+        duration: 5000,
+      });
+      
+      // Tự động chuyển về trang chính sau 3 giây
+      setTimeout(() => {
+        onPaymentComplete();
+      }, 3000);
+    } else if (orderStatus === 'rejected') {
+      toast({
+        title: "❌ Thanh toán thất bại",
+        description: "Đơn hàng đã bị từ chối. Vui lòng liên hệ hỗ trợ.",
+        duration: 5000,
+      });
+    }
+  }, [orderStatus, toast, onPaymentComplete]);
 
   // Đếm ngược thời gian
   useEffect(() => {
@@ -83,10 +122,21 @@ export const QRPayment: React.FC<QRPaymentProps> = ({
   const { qrUrl, paymentCode, bankInfo } = qrData;
 
   return (
-    <div className="min-h-screen bg-background p-4">
+    <div className="min-h-screen bg-background p-4 relative">
+      {/* Hiệu ứng thành công */}
+      {showSuccess && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-lg p-8 text-center animate-bounce">
+            <div className="text-6xl mb-4">🎉</div>
+            <h2 className="text-2xl font-bold text-green-600 mb-2">Thanh toán thành công!</h2>
+            <p className="text-gray-600">Đơn hàng đã được xác nhận</p>
+          </div>
+        </div>
+      )}
+      
       <Card className="max-w-md mx-auto">
-        <CardHeader className="text-center">
-          <div className="flex items-center justify-between mb-4">
+        <CardHeader className="text-center pb-4">
+          <div className="flex justify-between items-center mb-4">
             <Button variant="ghost" size="sm" onClick={onBack}>
               <ArrowLeft className="w-4 h-4 mr-2" />
               Quay lại
@@ -97,23 +147,39 @@ export const QRPayment: React.FC<QRPaymentProps> = ({
             </Badge>
           </div>
           
-          <div className="w-16 h-16 bistro-gradient rounded-full mx-auto mb-4 flex items-center justify-center">
-            <QrCode className="w-8 h-8 text-white" />
+          <div className="w-12 h-12 bistro-gradient rounded-full mx-auto mb-3 flex items-center justify-center">
+            <QrCode className="w-6 h-6 text-white" />
           </div>
-          <CardTitle className="text-xl">Thanh toán chuyển khoản</CardTitle>
-          <CardDescription>
+          <CardTitle className="text-lg mb-2">Thanh toán chuyển khoản</CardTitle>
+          <CardDescription className="text-sm">
             Quét mã QR hoặc chuyển khoản theo thông tin bên dưới
           </CardDescription>
+          
+          {/* Trạng thái realtime */}
+          <div className="flex items-center justify-center gap-2 mt-3">
+            <div className={`w-2 h-2 rounded-full ${
+              orderStatus === 'confirmed' ? 'bg-green-500' :
+              orderStatus === 'rejected' ? 'bg-red-500' :
+              statusLoading ? 'bg-yellow-500 animate-pulse' :
+              'bg-blue-500 animate-pulse'
+            }`}></div>
+            <span className="text-xs text-gray-600">
+              {orderStatus === 'confirmed' ? 'Thanh toán đã xác nhận' :
+               orderStatus === 'rejected' ? 'Thanh toán bị từ chối' :
+               statusLoading ? 'Đang kiểm tra...' :
+               'Đang chờ thanh toán'}
+            </span>
+          </div>
         </CardHeader>
 
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-4">
           {/* QR Code */}
           <div className="flex justify-center">
-            <div className="p-4 bg-white rounded-lg border-2 border-dashed border-bistro-primary">
+            <div className="p-3 bg-white rounded-lg border border-bistro-primary/20">
               <img 
                 src={qrUrl} 
                 alt="QR Code thanh toán" 
-                className="w-48 h-48 object-contain"
+                className="w-40 h-40 sm:w-48 sm:h-48 object-contain"
                 onError={(e) => {
                   e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjRjVGNUY1Ii8+CjxwYXRoIGQ9Ik0xMDAgNTBWMTUwTTUwIDEwMEgxNTAiIHN0cm9rZT0iIzk5OTk5OSIgc3Ryb2tlLXdpZHRoPSIyIi8+Cjx0ZXh0IHg9IjEwMCIgeT0iMTcwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjOTk5OTk5IiBmb250LXNpemU9IjEyIj5RUiBDb2RlPC90ZXh0Pgo8L3N2Zz4=';
                 }}
@@ -122,23 +188,24 @@ export const QRPayment: React.FC<QRPaymentProps> = ({
           </div>
 
           {/* Thông tin thanh toán */}
-          <div className="bg-bistro-cream rounded-lg p-4 space-y-3">
+          <div className="bg-bistro-cream/50 rounded-lg p-3 space-y-2">
             <div className="flex justify-between items-center">
-              <span className="font-medium">Số tiền:</span>
-              <span className="text-xl font-bold text-bistro-primary">
+              <span className="text-sm font-medium">Số tiền:</span>
+              <span className="text-lg font-bold text-bistro-primary">
                 {formatPrice(orderTotal)}đ
               </span>
             </div>
             
             <div className="flex justify-between items-center">
-              <span className="font-medium">Mã nội dung:</span>
-              <div className="flex items-center gap-2">
-                <code className="bg-white px-2 py-1 rounded text-sm font-mono">
+              <span className="text-sm font-medium">Mã nội dung:</span>
+              <div className="flex items-center gap-1">
+                <code className="bg-white px-2 py-1 rounded text-xs font-mono">
                   {paymentCode}
                 </code>
                 <Button 
                   size="sm" 
                   variant="ghost" 
+                  className="h-6 w-6 p-0"
                   onClick={() => copyToClipboard(paymentCode, 'Mã nội dung')}
                 >
                   <Copy className="w-3 h-3" />
@@ -147,96 +214,73 @@ export const QRPayment: React.FC<QRPaymentProps> = ({
             </div>
           </div>
 
-          <Separator />
-
           {/* Thông tin ngân hàng */}
-          <div className="space-y-4">
-            <h3 className="font-semibold text-center">Thông tin chuyển khoản</h3>
+          <div className="bg-gray-50 rounded-lg p-3">
+            <h3 className="text-sm font-semibold text-center mb-3 text-gray-700">Thông tin chuyển khoản</h3>
             
-            <div className="space-y-3">
-              <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg border border-blue-200">
-                <span className="text-sm text-blue-700 font-medium">Ngân hàng:</span>
-                <div className="text-right">
-                  <div className="font-semibold text-blue-900">{bankInfo.bankCode} - {bankInfo.bankName.split('(')[0].trim()}</div>
-                  <div className="text-xs text-blue-600">({bankInfo.bankCode})</div>
-                </div>
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-gray-600">Ngân hàng:</span>
+                <span className="text-sm font-medium text-gray-900">{bankInfo.bankCode} - {bankInfo.bankName}</span>
               </div>
               
-              <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg border border-green-200">
-                <span className="text-sm text-green-700 font-medium">Số tài khoản:</span>
-                <div className="flex items-center gap-2">
-                  <span className="font-mono font-bold text-green-900 text-lg">{bankInfo.accountNumber}</span>
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-gray-600">Số tài khoản:</span>
+                <div className="flex items-center gap-1">
+                  <span className="font-mono font-bold text-sm text-gray-900">{bankInfo.accountNumber}</span>
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="text-green-600 hover:text-green-800 hover:bg-green-100"
+                    className="h-6 w-6 p-0 text-gray-500 hover:text-gray-700"
                     onClick={() => copyToClipboard(bankInfo.accountNumber, 'Đã sao chép số tài khoản')}
                   >
-                    <Copy className="h-4 w-4" />
+                    <Copy className="h-3 w-3" />
                   </Button>
                 </div>
               </div>
               
-              <div className="flex justify-between items-center p-3 bg-purple-50 rounded-lg border border-purple-200">
-                <span className="text-sm text-purple-700 font-medium">Chủ tài khoản:</span>
-                <div className="text-right">
-                  <div className="font-semibold text-purple-900">{bankInfo.accountName}</div>
-                  <div className="text-xs text-purple-600">Công ty TNHH</div>
-                </div>
-              </div>
-              
-              <div className="flex justify-between items-center p-3 bg-orange-50 rounded-lg border border-orange-200">
-                <span className="text-sm text-orange-700 font-medium">Chi nhánh:</span>
-                <span className="font-medium text-orange-900">{bankInfo.branch}</span>
-              </div>
-              
-              <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg border border-gray-200">
-                <span className="text-sm text-gray-700 font-medium">SWIFT Code:</span>
-                <div className="flex items-center gap-2">
-                  <span className="font-mono font-medium text-gray-900">{bankInfo.swiftCode}</span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-gray-600 hover:text-gray-800 hover:bg-gray-100"
-                    onClick={() => copyToClipboard(bankInfo.swiftCode, 'Đã sao chép SWIFT Code')}
-                  >
-                    <Copy className="h-4 w-4" />
-                  </Button>
-                </div>
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-gray-600">Chủ tài khoản:</span>
+                <span className="text-sm font-medium text-gray-900">{bankInfo.accountName}</span>
               </div>
             </div>
           </div>
 
-          <Separator />
-
           {/* Hướng dẫn */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <h4 className="font-medium text-blue-900 mb-2">Hướng dẫn thanh toán:</h4>
-            <ol className="text-sm text-blue-800 space-y-1 list-decimal list-inside">
-              <li>Quét mã QR bằng app ngân hàng của bạn</li>
+          <div className="bg-blue-50/50 rounded-lg p-3">
+            <h4 className="text-sm font-medium text-blue-900 mb-2">Hướng dẫn thanh toán:</h4>
+            <ol className="text-xs text-blue-800 space-y-1 list-decimal list-inside">
+              <li>Quét mã QR bằng app ngân hàng</li>
               <li>Hoặc chuyển khoản theo thông tin trên</li>
-              <li>Nhập đúng mã nội dung: <strong>{paymentCode}</strong></li>
-              <li>Sau khi chuyển khoản, nhấn "Đã thanh toán"</li>
+              <li>Nhập đúng mã: <strong>{paymentCode}</strong></li>
+              <li>Sau đó nhấn "Đã thanh toán"</li>
             </ol>
           </div>
 
-          <Button 
-            onClick={onPaymentComplete}
-            className="w-full h-12 text-base font-semibold"
-            variant="bistro"
-          >
-            <CheckCircle className="w-5 h-5 mr-2" />
-            Đã thanh toán
-          </Button>
-
-          <div className="text-center">
+          <div className="space-y-3">
             <Button 
-              variant="link" 
-              className="text-sm text-muted-foreground"
-              onClick={() => window.open('tel:0908138885', '_self')}
+              onClick={() => {
+                refreshStatus(); // Kiểm tra trạng thái ngay lập tức
+                onPaymentComplete();
+              }}
+              className="w-full h-11 text-sm font-semibold"
+              variant="bistro"
+              disabled={statusLoading || orderStatus === 'confirmed'}
             >
-              Cần hỗ trợ? Gọi Hotline: 0908 138 885
-            </Button>
+                {statusLoading ? 'Đang kiểm tra...' : 
+                 orderStatus === 'confirmed' ? '✅ Đã xác nhận' : 
+                 'Đã thanh toán'}
+              </Button>
+
+            <div className="text-center">
+              <Button 
+                variant="link" 
+                className="text-xs text-muted-foreground h-auto p-0"
+                onClick={() => window.open('tel:0908138885', '_self')}
+              >
+                Cần hỗ trợ? Gọi: 0908 138 885
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>

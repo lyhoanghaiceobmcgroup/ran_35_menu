@@ -9,7 +9,12 @@
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
-    "deploy:webhook": "node deploy-webhook.js"
+    "deploy:webhook": "node deploy-webhook.cjs",
+    "test:telegram": "tsx src/test/telegramNotificationTest.ts",
+    "test:telegram:simple": "tsx src/test/telegramNotificationTestSimple.ts",
+    "test:telegram:direct": "tsx src/test/directTelegramTest.ts",
+    "test:webhook": "tsx src/test/webhookTest.ts",
+    "test:bank:real": "tsx src/test/realBankTransactionTest.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -52,7 +57,6 @@
     "input-otp": "^1.4.2",
     "lucide-react": "^0.462.0",
     "next-themes": "^0.3.0",
-    "node-fetch": "^2.7.0",
     "react": "^18.3.1",
     "react-day-picker": "^8.10.1",
     "react-dom": "^18.3.1",
@@ -79,8 +83,10 @@
     "eslint-plugin-react-refresh": "^0.4.20",
     "globals": "^15.15.0",
     "lovable-tagger": "^1.1.9",
+    "node-fetch": "^3.3.2",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.17",
+    "tsx": "^4.20.5",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.38.0",
     "vite": "^5.4.19"

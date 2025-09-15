@@ -204,6 +204,29 @@ export const menuItems: MenuItem[] = [
         ]
       }
     ]
+  },
+  {
+    id: '6',
+    sku: 'WTR001',
+    name: 'Nước lọc',
+    description: 'Nước lọc tinh khiết, mát lạnh',
+    price: 10000,
+    image: '/src/assets/placeholder.svg',
+    category_id: 'drinks',
+    available: true,
+    tags: ['healthy', 'basic'],
+    modifiers: [
+      {
+        id: 'temperature',
+        name: 'Nhiệt độ',
+        type: 'single',
+        required: false,
+        options: [
+          { id: 'cold', name: 'Lạnh', price_delta: 0 },
+          { id: 'room_temp', name: 'Thường', price_delta: 0 }
+        ]
+      }
+    ]
   }
 ];
 

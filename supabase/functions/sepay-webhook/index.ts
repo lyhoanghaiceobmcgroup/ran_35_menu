@@ -51,8 +51,15 @@ serve(async (req) => {
 
     // Extract order ID from payment content
     // Format: RAN{orderCode}{timestamp} hoặc chứa order ID
-    const orderIdMatch = webhookData.content.match(/RAN([A-Z0-9]+)/i) || 
-                        webhookData.content.match(/([a-f0-9-]{36})/i)
+    console.log('🔍 Searching for order ID in content:', webhookData.content)
+    
+    const ranMatch = webhookData.content.match(/RAN([A-Z0-9]+)/i)
+    const uuidMatch = webhookData.content.match(/([a-f0-9-]{36})/i)
+    
+    console.log('RAN match:', ranMatch)
+    console.log('UUID match:', uuidMatch)
+    
+    const orderIdMatch = ranMatch || uuidMatch
     
     if (!orderIdMatch) {
       console.log('❌ Order ID not found in payment content:', webhookData.content)
@@ -72,8 +79,7 @@ serve(async (req) => {
     const { data: orders, error: searchError } = await supabaseClient
       .from('orders')
       .select('*')
-      .or(`id.eq.${extractedOrderId},id.ilike.%${extractedOrderId}%`)
-      .eq('payment_method', 'BANK_TRANSFER')
+      .eq('id', extractedOrderId)
       .eq('status', 'pending')
 
     if (searchError) {
@@ -119,9 +125,8 @@ serve(async (req) => {
       .update({
         status: 'confirmed',
         payment_status: 'confirmed',
-        payment_confirmed_at: new Date().toISOString(),
-        sepay_transaction_id: webhookData.id,
-        sepay_reference_code: webhookData.referenceCode,
+        payment_method: 'bank_transfer',
+        payment_amount: receivedAmount,
         updated_at: new Date().toISOString()
       })
       .eq('id', order.id)
