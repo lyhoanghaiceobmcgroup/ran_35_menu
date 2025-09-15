@@ -29,9 +29,9 @@ interface TelegramMessage {
   };
 }
 
-const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || process.env.VITE_TELEGRAM_BOT_TOKEN || '8019114116:AAGdPUMJI_ECNIRWm7ZtmPNd3MMUXb6ci_E';
+const TELEGRAM_BOT_TOKEN = import.meta.env.VITE_TELEGRAM_BOT_TOKEN || '8019114116:AAGdPUMJI_ECNIRWm7ZtmPNd3MMUXb6ci_E';
 const TELEGRAM_CHAT_ID = '-4852894219'; // Order Menu group ID
-const BALANCE_NOTIFICATION_CHAT_ID = process.env.BALANCE_NOTIFICATION_CHAT_ID || process.env.VITE_TELEGRAM_CHAT_ID || '-4833394087'; // Có thể tạo group riêng cho thông báo số dư
+const BALANCE_NOTIFICATION_CHAT_ID = import.meta.env.VITE_TELEGRAM_CHAT_ID || '-4833394087'; // Có thể tạo group riêng cho thông báo số dư
 
 export class TelegramNotificationService {
   /**

@@ -66,7 +66,7 @@ export const PhoneVerification: React.FC<PhoneVerificationProps> = ({
           </div>
           <CardTitle className="text-2xl">Xin chào!</CardTitle>
           <CardDescription className="text-base">
-            Bạn đang ở <span className="font-semibold text-bistro-primary">bàn {tableCode}</span>
+            Bạn đang ở <span className="font-semibold text-bistro-primary">Ran Bitro</span>
           </CardDescription>
         </CardHeader>
         
@@ -76,7 +76,7 @@ export const PhoneVerification: React.FC<PhoneVerificationProps> = ({
               <label htmlFor="phone" className="block text-sm font-medium mb-2">
                 Số điện thoại
               </label>
-              <Input id="phone" type="tel" placeholder="0826 xxx 923" value={phone} onChange={e => setPhone(e.target.value)} className="text-center text-lg" required />
+              <Input id="phone" type="tel" placeholder="điền số điện thoại" value={phone} onChange={e => setPhone(e.target.value)} className="text-center text-lg" required />
             </div>
             
             
